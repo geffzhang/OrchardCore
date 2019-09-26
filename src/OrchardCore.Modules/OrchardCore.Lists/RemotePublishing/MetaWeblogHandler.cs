@@ -166,7 +166,7 @@ namespace OrchardCore.Lists.RemotePublishing
 
             string directoryName = Path.GetDirectoryName(name);
             string filePath = _mediaFileStore.Combine(directoryName, Path.GetFileName(name));
-            await _mediaFileStore.CreateFileFromStream(filePath, new MemoryStream(bits));
+            await _mediaFileStore.CreateFileFromStreamAsync(filePath, new MemoryStream(bits));
 
             string publicUrl = _mediaFileStore.MapPathToPublicUrl(filePath);
 
@@ -201,7 +201,7 @@ namespace OrchardCore.Lists.RemotePublishing
                         array.Add(new XRpcStruct()
                                       .Set("url", context.Url.Action(displayRouteValues["action"].ToString(), displayRouteValues["controller"].ToString(), displayRouteValues, context.HttpContext.Request.Scheme))
                                       .Set("blogid", list.ContentItemId)
-                                      .Set("blogName", metadata.DisplayText));
+                                      .Set("blogName", list.DisplayText));
                     }
                 }
             }
@@ -497,7 +497,7 @@ namespace OrchardCore.Lists.RemotePublishing
         {
             var contentTypeDefinition = _contentDefinitionManager.GetTypeDefinition(contentItem.ContentType);
             var contentTypePartDefinition = contentTypeDefinition.Parts.FirstOrDefault(x => String.Equals(x.PartDefinition.Name, "ListPart", StringComparison.Ordinal));
-            var settings = contentTypePartDefinition.Settings.ToObject<ListPartSettings>();
+            var settings = contentTypePartDefinition.GetSettings<ListPartSettings>();
             var contentTypes = settings.ContainedContentTypes ?? Enumerable.Empty<string>();
             return contentTypes.Select(contentType => _contentDefinitionManager.GetTypeDefinition(contentType));
         }

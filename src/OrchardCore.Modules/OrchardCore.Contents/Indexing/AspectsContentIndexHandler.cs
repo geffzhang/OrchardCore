@@ -20,32 +20,21 @@ namespace OrchardCore.Contents.Indexing
 
             if (body != null)
             {
-                context.DocumentIndex.Entries.Add(
-                "Content.BodyAspect.Body",
-                new DocumentIndex.DocumentIndexEntry(
+                context.DocumentIndex.Set(
+                    IndexingConstants.BodyAspectBodyKey,
                     body.Body,
-                    DocumentIndex.Types.Text,
-                    DocumentIndexOptions.Analyze | DocumentIndexOptions.Sanitize));
+                    DocumentIndexOptions.Analyze | DocumentIndexOptions.Sanitize);
             }
 
-            var contentItemMetadata = await _contentManager.PopulateAspectAsync<ContentItemMetadata>(context.ContentItem);
+            context.DocumentIndex.Set(
+                IndexingConstants.DisplayTextAnalyzedKey,
+                context.ContentItem.DisplayText,
+                DocumentIndexOptions.Analyze | DocumentIndexOptions.Sanitize);
 
-            if (contentItemMetadata?.DisplayText != null)
-            {
-                context.DocumentIndex.Entries.Add(
-                "Content.ContentItemMetadata.DisplayText.Analyzed",
-                new DocumentIndex.DocumentIndexEntry(
-                    contentItemMetadata.DisplayText,
-                    DocumentIndex.Types.Text,
-                    DocumentIndexOptions.Analyze | DocumentIndexOptions.Sanitize));
-
-                context.DocumentIndex.Entries.Add(
-                "Content.ContentItemMetadata.DisplayText",
-                new DocumentIndex.DocumentIndexEntry(
-                    contentItemMetadata.DisplayText,
-                    DocumentIndex.Types.Text,
-                    DocumentIndexOptions.Store));
-            }
+            context.DocumentIndex.Set(
+                IndexingConstants.DisplayTextKey,
+                context.ContentItem.DisplayText,
+                DocumentIndexOptions.Store);
         }
     }
 }

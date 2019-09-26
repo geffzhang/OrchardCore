@@ -1,8 +1,8 @@
-# Content Types (OrchardCore.ContentTypes)
+# Content Types (`OrchardCore.ContentTypes`)
 
 ## View Components
 
-### SelectContentTypes
+### `SelectContentTypes`
 
 Renders an editor to select a list of content types. 
 It can optionally filter content types of a specific stereotype.
@@ -14,20 +14,19 @@ The editor returns the selection as a `string[]` on the model.
 | --------- | ---- | ----------- |
 | `selectedContentTypes` | `string[]` | The list of content types that should be marked as selected when rendering the editor. |
 | `htmlName` | `string` | The name of the model property to bind the result to.
-| `stereotype` (optional) | `string` | A stereotype name to filter the list of content types to be able to select. |
+| `stereotype` (optional) | `string` | A stereotype name to filter the list of content types available to select. |
 
 #### Sample
 
 ```csharp
 @await Component.InvokeAsync("SelectContentTypes", new { selectedContentTypes = Model.ContainedContentTypes, htmlName = Html.NameFor(m => m.ContainedContentTypes) })
-
 ```
 
 ## Migrations
 
 Migration classes can be used to alter the content type definitions, like by adding new __types__, or configuring their __parts__ and __fields__.
 
-### IContentDefinitionManager
+### `IContentDefinitionManager`
 
 This service provides a way to modify the content type definitions. From a migrations class, we can inject an instance of this interface.
 
@@ -103,7 +102,7 @@ For a list of all the settings each type can use, please refer to their respecti
 
 ### Adding Content Fields to a part
 
-Fields can not be attached directly to a Content Type. To add fields to a content type, create a part using with the same name as the type and add fields to this part. 
+Fields can not be attached directly to a Content Type. To add fields to a content type, create a part with the same name as the type, and add fields to this part. 
 
 ```csharp
  _contentDefinitionManager.AlterTypeDefinition("Product", type => type
@@ -119,3 +118,70 @@ Fields can not be attached directly to a Content Type. To add fields to a conten
 ```
 
 When added to a part, fields can also have custom settings which for instance will define how the editor will behave, or validation rules. Also refer to their respective documentation pages for a list of possible settings.
+
+### Consuming Content Parts and Fields from CSharp
+
+It's possible to get strongly typed versions of Content Parts and Fields from the above type definitions.
+
+!!! warning
+    These types may be modified in the CMS. It's important to make sure these types will not be modified outside of the development cycle when consuming them in code.
+
+First, create a part that matches the type definition:
+
+```csharp
+public class Product : ContentPart
+{
+    public MediaField Image { get; set; }
+    public NumericField Price { get; set; }
+}
+```
+
+Then, register your ContentPart with Dependency Injection:
+
+```csharp
+using OrchardCore.ContentManagement;
+
+...
+
+public class Startup : StartupBase
+{
+    public override void ConfigureServices(IServiceCollection services)
+    {
+        services.AddContentPart<Product>();
+    }
+}
+```
+
+Finally, here is an example of consuming your Content Item as your Content Part in a Controller.
+
+```csharp
+public class ProductController : Controller
+{
+    private readonly IOrchardHelper _orchardHelper;
+
+    public ProductController(IOrchardHelper orchardHelper)
+    {
+        _orchardHelper = orchardHelper;
+    }
+
+    [HttpPost("/api/product/{productId}")]
+    public async Task<ObjectResult> GetProductAsync(string productId)
+    {
+        var product = _orchardHelper.GetContentItemByIdAsync(productId);
+
+        if (product == null) 
+        {
+            return NotFoundObjectResult();
+        }
+
+        var productPart = product.As<Product>();
+
+        // you'll get exceptions if any of these Fields are null
+        // the null-conditional operator (?) should be used for any fields which aren't required
+        return new ObjectResult(new {
+             Image = productPart.Image.Paths.FirstOrDefault(),
+             Price = productPart.Price.Value,
+        });
+    }
+}
+```

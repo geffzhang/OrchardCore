@@ -21,6 +21,7 @@ namespace OrchardCore.Workflows.Activities
         private IStringLocalizer T { get; }
 
         public override string Name => nameof(ForEachTask);
+        public override LocalizedString DisplayText => T["For Each Task"];
         public override LocalizedString Category => T["Control Flow"];
 
         /// <summary>
@@ -81,6 +82,7 @@ namespace OrchardCore.Workflows.Activities
             }
             else
             {
+                Index = 0;
                 return Outcomes("Done");
             }
         }

@@ -9,7 +9,7 @@ using OrchardCore.ContentTypes.RecipeSteps;
 using OrchardCore.ContentTypes.Services;
 using OrchardCore.Deployment;
 using OrchardCore.DisplayManagement.Handlers;
-using OrchardCore.Environment.Navigation;
+using OrchardCore.Navigation;
 using OrchardCore.Recipes;
 using OrchardCore.Security.Permissions;
 
@@ -35,34 +35,42 @@ namespace OrchardCore.ContentTypes
             // Content Types management UI
             services.AddRecipeExecutionStep<ContentDefinitionStep>();
 
-            // Deployment step
-            services.AddTransient<IDeploymentSource, ContentDefinitionDeploymentSource>();
-            services.AddSingleton<IDeploymentStepFactory>(new DeploymentStepFactory<ContentDefinitionDeploymentStep>());
-            services.AddScoped<IDisplayDriver<DeploymentStep>, ContentDefinitionDeploymentStepDriver>();
         }
 
-        public override void Configure(IApplicationBuilder builder, IRouteBuilder routes, IServiceProvider serviceProvider)
+        public override void Configure(IApplicationBuilder builder, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
         {
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "EditField",
                 areaName: "OrchardCore.ContentTypes",
-                template: "Admin/ContentParts/{id}/Fields/{name}/Edit",
+                pattern: "Admin/ContentParts/{id}/Fields/{name}/Edit",
                 defaults: new { controller = "Admin", action = "EditField" }
             );
 
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "EditTypePart",
                 areaName: "OrchardCore.ContentTypes",
-                template: "Admin/ContentTypes/{id}/ContentParts/{name}/Edit",
+                pattern: "Admin/ContentTypes/{id}/ContentParts/{name}/Edit",
                 defaults: new { controller = "Admin", action = "EditTypePart" }
             );
 
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "RemovePart",
                 areaName: "OrchardCore.ContentTypes",
-                template: "Admin/ContentTypes/{id}/ContentParts/{name}/Remove",
+                pattern: "Admin/ContentTypes/{id}/ContentParts/{name}/Remove",
                 defaults: new { controller = "Admin", action = "RemovePart" }
             );
+        }
+    }
+
+
+    [RequireFeatures("OrchardCore.Deployment")]
+    public class DeploymentStartup : StartupBase
+    {
+        public override void ConfigureServices(IServiceCollection services)
+        {
+            services.AddTransient<IDeploymentSource, ContentDefinitionDeploymentSource>();
+            services.AddSingleton<IDeploymentStepFactory>(new DeploymentStepFactory<ContentDefinitionDeploymentStep>());
+            services.AddScoped<IDisplayDriver<DeploymentStep>, ContentDefinitionDeploymentStepDriver>();
         }
     }
 }

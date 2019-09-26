@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.Mvc.Razor.Compilation;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using OrchardCore.DisplayManagement;
 using OrchardCore.DisplayManagement.Descriptors;
@@ -43,14 +41,18 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         options.Filters.Add(typeof(ModelBinderAccessorFilter));
                         options.Filters.Add(typeof(NotifyFilter));
-                        options.Filters.Add(typeof(SiteViewResultFilter));
+                        options.Filters.Add(typeof(RazorViewResultFilter));
                     });
 
+                    // Used as a service when we create a fake 'ActionContext'.
+                    services.AddScoped<IAsyncViewResultFilter, RazorViewResultFilter>();
+
                     services.AddScoped<IUpdateModelAccessor, LocalModelBinderAccessor>();
+                    services.AddScoped<ViewContextAccessor>();
 
                     services.AddScoped<IShapeTemplateViewEngine, RazorShapeTemplateViewEngine>();
                     services.AddSingleton<IApplicationFeatureProvider<ViewsFeature>, ThemingViewsFeatureProvider>();
-                    services.AddScoped<IViewLocationExpanderProvider, ThemeAwareViewLocationExpanderProvider>();
+                    services.AddScoped<IViewLocationExpanderProvider, ThemeViewLocationExpanderProvider>();
 
                     services.AddScoped<IShapeTemplateHarvester, BasicShapeTemplateHarvester>();
                     services.AddTransient<IShapeTableManager, DefaultShapeTableManager>();
@@ -58,6 +60,8 @@ namespace Microsoft.Extensions.DependencyInjection
                     services.AddScoped<IShapeTableProvider, ShapeAttributeBindingStrategy>();
                     services.AddScoped<IShapeTableProvider, ShapePlacementParsingStrategy>();
                     services.AddScoped<IShapeTableProvider, ShapeTemplateBindingStrategy>();
+
+                    services.AddScoped<IPlacementNodeFilterProvider, PathPlacementNodeFilterProvider>();
 
                     services.TryAddEnumerable(
                         ServiceDescriptor.Transient<IConfigureOptions<ShapeTemplateOptions>, ShapeTemplateOptionsSetup>());
@@ -74,14 +78,28 @@ namespace Microsoft.Extensions.DependencyInjection
                     services.AddScoped<IPageTitleBuilder, PageTitleBuilder>();
 
                     services.AddScoped<IShapeFactory, DefaultShapeFactory>();
-                    services.AddScoped<IDisplayHelperFactory, DisplayHelperFactory>();
+                    services.AddScoped<IDisplayHelper, DisplayHelper>();
 
                     services.AddScoped<INotifier, Notifier>();
 
-                    services.AddScoped(typeof(IPluralStringLocalizer<>), typeof(PluralStringLocalizer<>));
                     services.AddShapeAttributes<DateTimeShapes>();
+                    services.AddShapeAttributes<PageTitleShapes>();
 
-                    services.AddTagHelpers(typeof(BaseShapeTagHelper).Assembly);
+                    services.AddTagHelpers<AddAlternateTagHelper>();
+                    services.AddTagHelpers<AddClassTagHelper>();
+                    services.AddTagHelpers<AddWrapperTagHelper>();
+                    services.AddTagHelpers<BaseShapeTagHelper>();
+                    services.AddTagHelpers<ClearAlternatesTagHelper>();
+                    services.AddTagHelpers<ClearClassesTagHelper>();
+                    services.AddTagHelpers<ClearWrappersTagHelper>();
+                    services.AddTagHelpers<InputIsDisabledTagHelper>();
+                    services.AddTagHelpers<RemoveAlternateTagHelper>();
+                    services.AddTagHelpers<RemoveClassTagHelper>();
+                    services.AddTagHelpers<RemoveWrapperTagHelper>();
+                    services.AddTagHelpers<ShapeMetadataTagHelper>();
+                    services.AddTagHelpers<ShapeTagHelper>();
+                    services.AddTagHelpers<ValidationMessageTagHelper>();
+                    services.AddTagHelpers<ZoneTagHelper>();
                 });
 
             return builder;

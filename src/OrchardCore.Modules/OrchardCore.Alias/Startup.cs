@@ -35,8 +35,8 @@ namespace OrchardCore.Alias
             services.AddScoped<IContentAliasProvider, AliasPartContentAliasProvider>();
 
             // Identity Part
+            services.AddContentPart<AliasPart>();
             services.AddScoped<IContentPartDisplayDriver, AliasPartDisplayDriver>();
-            services.AddSingleton<ContentPart, AliasPart>();
             services.AddScoped<IContentPartHandler, AliasPartHandler>();
             services.AddScoped<IContentPartIndexHandler, AliasPartIndexHandler>();
             services.AddScoped<IContentTypePartDefinitionDisplayDriver, AliasPartSettingsDisplayDriver>();

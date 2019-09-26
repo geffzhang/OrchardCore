@@ -8,7 +8,7 @@
 @inject OrchardCore.ContentManagement.Display.IContentItemDisplayManager ContentItemDisplayManager
 
 @{
-    var widgetContentTypes = ContentDefinitionManager.ListTypeDefinitions().Where(t => t.Settings.ToObject<ContentTypeSettings>().Stereotype == "Widget");
+    var widgetContentTypes = ContentDefinitionManager.ListTypeDefinitions().Where(t => t.GetSettings<ContentTypeSettings>().Stereotype == "Widget");
 }
 
 <script asp-name="jquery-ui" at="Foot"></script>
@@ -39,6 +39,7 @@
                                     widgetEditor.PrefixesName = Html.NameFor(x => x.Prefixes);
                                     widgetEditor.ContentTypesName = Html.NameFor(x => x.ContentTypes);
                                     widgetEditor.TargetId = widgetTemplatePlaceholderId;
+                                    widgetEditor.Zone = zone;
 
                                     widgetEditor.Metadata.Alternates.Add("Widget_Edit__List");
                                 }
@@ -88,8 +89,8 @@
             await DisplayAsync(await ContentItemDisplayManager.BuildEditorAsync(contentItem, Model.Updater, true, "", Guid.NewGuid().ToString("n")));
         }
 
-        <script asp-src="/OrchardCore.Widgets/Scripts/widgetslist.edit.js" at="Foot" depends-on="admin"></script>
-        <style asp-src="/OrchardCore.Widgets/Styles/widgetslist.edit.css"></style>
+        <script asp-src="~/OrchardCore.Widgets/Scripts/widgetslist.edit.js" at="Foot" depends-on="admin"></script>
+        <style asp-src="~/OrchardCore.Widgets/Styles/widgetslist.edit.css"></style>
     }
 
     <script at="Foot">

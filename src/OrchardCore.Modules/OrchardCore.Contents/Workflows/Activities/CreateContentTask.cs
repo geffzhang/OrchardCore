@@ -4,6 +4,7 @@ using Microsoft.Extensions.Localization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OrchardCore.ContentManagement;
+using OrchardCore.Contents.Workflows.Handlers;
 using OrchardCore.Workflows.Abstractions.Models;
 using OrchardCore.Workflows.Activities;
 using OrchardCore.Workflows.Models;
@@ -15,7 +16,7 @@ namespace OrchardCore.Contents.Workflows.Activities
     {
         private readonly IWorkflowExpressionEvaluator _expressionEvaluator;
 
-        public CreateContentTask(IContentManager contentManager, IWorkflowExpressionEvaluator expressionEvaluator, IWorkflowScriptEvaluator scriptEvaluator, IStringLocalizer<CreateContentTask> localizer) 
+        public CreateContentTask(IContentManager contentManager, IWorkflowExpressionEvaluator expressionEvaluator, IWorkflowScriptEvaluator scriptEvaluator, IStringLocalizer<CreateContentTask> localizer)
             : base(contentManager, scriptEvaluator, localizer)
         {
             _expressionEvaluator = expressionEvaluator;
@@ -23,6 +24,7 @@ namespace OrchardCore.Contents.Workflows.Activities
 
         public override string Name => nameof(CreateContentTask);
         public override LocalizedString Category => T["Content"];
+        public override LocalizedString DisplayText => T["Create Content Task"];
 
         public string ContentType
         {
@@ -38,7 +40,7 @@ namespace OrchardCore.Contents.Workflows.Activities
 
         public WorkflowExpression<string> ContentProperties
         {
-            get => GetProperty(() => new WorkflowExpression<string>(JsonConvert.SerializeObject(new { TitlePart = new { Title = "" } }, Formatting.Indented)));
+            get => GetProperty(() => new WorkflowExpression<string>(JsonConvert.SerializeObject(new { DisplayText = T["Enter a title"].Value }, Formatting.Indented)));
             set => SetProperty(value);
         }
 
@@ -69,7 +71,7 @@ namespace OrchardCore.Contents.Workflows.Activities
 
             workflowContext.LastResult = contentItem;
             workflowContext.CorrelationId = contentItem.ContentItemId;
-            workflowContext.Properties["Content"] = contentItem;
+            workflowContext.Properties[ContentsHandler.ContentItemInputKey] = contentItem;
 
             return Outcomes("Done");
         }

@@ -21,13 +21,9 @@ namespace OrchardCore.Liquid.Services
             var templateContext = new TemplateContext();
             templateContext.SetValue("ContentItem", liquidPart.ContentItem);
             templateContext.MemberAccessStrategy.Register<LiquidPartViewModel>();
-            templateContext.Contextualize(shapeDisplayContext.DisplayContext);
+            await templateContext.ContextualizeAsync(shapeDisplayContext.DisplayContext);
 
-            using (var writer = new StringWriter())
-            {
-                await liquidTemplateManager.RenderAsync(liquidPart.Liquid, writer, HtmlEncoder.Default, templateContext);
-                model.Html = writer.ToString();
-            }
+            model.Html = await liquidTemplateManager.RenderAsync(liquidPart.Liquid, HtmlEncoder.Default, templateContext);
 
             model.Liquid = liquidPart.Liquid;
             model.LiquidPart = liquidPart;

@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.Data.Migration;
 using OrchardCore.Deployment.Core;
+using OrchardCore.Deployment.Deployment;
 using OrchardCore.Deployment.Indexes;
+using OrchardCore.Deployment.Recipes;
 using OrchardCore.Deployment.Steps;
 using OrchardCore.DisplayManagement;
 using OrchardCore.DisplayManagement.Handlers;
-using OrchardCore.Environment.Navigation;
+using OrchardCore.Navigation;
 using OrchardCore.Modules;
+using OrchardCore.Recipes;
 using OrchardCore.Security.Permissions;
 using YesSql.Indexes;
 
@@ -34,21 +37,29 @@ namespace OrchardCore.Deployment
 
             services.AddSingleton<IIndexProvider, DeploymentPlanIndexProvider>();
             services.AddTransient<IDataMigration, Migrations>();
+
+            services.AddScoped<DeploymentPlanService>();
+
+            services.AddRecipeExecutionStep<DeploymentPlansRecipeStep>();
+
+            services.AddTransient<IDeploymentSource, DeploymentPlanDeploymentSource>();
+            services.AddSingleton<IDeploymentStepFactory>(new DeploymentStepFactory<DeploymentPlanDeploymentStep>());
+            services.AddScoped<IDisplayDriver<DeploymentStep>, DeploymentPlanDeploymentStepDriver>();
         }
 
-        public override void Configure(IApplicationBuilder app, IRouteBuilder routes, IServiceProvider serviceProvider)
+        public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
         {
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "DeleteStep",
                 areaName: "OrchardCore.Deployment",
-                template: "Deployment/DeploymentPlan/{id}/Step/{stepId}/Delete",
+                pattern: "Deployment/DeploymentPlan/{id}/Step/{stepId}/Delete",
                 defaults: new { controller = "Step", action = "Delete" }
             );
 
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "ExecutePlan",
                 areaName: "OrchardCore.Deployment",
-                template: "Deployment/DeploymentPlan/{id}/Type/{type}/Execute",
+                pattern: "Deployment/DeploymentPlan/{id}/Type/{type}/Execute",
                 defaults: new { controller = "DeploymentPlan", action = "Execute" }
             );
         }

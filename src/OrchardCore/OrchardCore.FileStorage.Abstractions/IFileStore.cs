@@ -39,12 +39,13 @@ namespace OrchardCore.FileStorage
         /// Enumerates the content (files and directories) in a given directory within the file store.
         /// </summary>
         /// <param name="path">The path of the directory to enumerate, or <c>null</c> to enumerate the root of the file store.</param>
+        /// <param name="includeSubDirectories">A flag to indicate whether to get the contents from just the top directory or from all sub-directories as well.</param>
         /// <returns>The list of files and directories in the given directory.</returns>
         /// <exception cref="FileStoreException">Thrown if the specified directory does not exist.</exception>
         /// <remarks>
         /// Results are grouped by entry type, where directories are followed by files.
         /// </remarks>
-        Task<IEnumerable<IFileStoreEntry>> GetDirectoryContentAsync(string path = null);
+        Task<IEnumerable<IFileStoreEntry>> GetDirectoryContentAsync(string path = null, bool includeSubDirectories = false);
 
         /// <summary>
         /// Creates a directory in the file store if it doesn't already exist.
@@ -93,6 +94,14 @@ namespace OrchardCore.FileStorage
         Task<Stream> GetFileStreamAsync(string path);
 
         /// <summary>
+        /// Creates a stream to read the contents of a file in the file store.
+        /// </summary>
+        /// <param name="fileStoreEntry">The IFileStoreEntry to be read.</param>
+        /// <returns>An instance of <see cref="System.IO.Stream"/> that can be used to read the contents of the file. The caller must close the stream when finished.</returns>
+        /// <exception cref="FileStoreException">Thrown if the specified file does not exist.</exception>
+        Task<Stream> GetFileStreamAsync(IFileStoreEntry fileStoreEntry);
+
+        /// <summary>
         /// Creates a new file in the file store from the contents of an input stream.
         /// </summary>
         /// <param name="path">The path of the file to be created.</param>
@@ -103,7 +112,7 @@ namespace OrchardCore.FileStorage
         /// If the specified path contains one or more directories, then those directories are
         /// created if they do not already exist.
         /// </remarks>
-        Task CreateFileFromStream(string path, Stream inputStream, bool overwrite = false);
+        Task CreateFileFromStreamAsync(string path, Stream inputStream, bool overwrite = false);
     }
 
     public static class IFileStoreExtensions

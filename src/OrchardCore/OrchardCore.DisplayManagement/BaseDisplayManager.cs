@@ -26,6 +26,13 @@ namespace OrchardCore.DisplayManagement
         protected async Task BindPlacementAsync(IBuildShapeContext context)
         {
             var theme = await _themeManager.GetThemeAsync();
+
+            // If there is no active theme, do nothing
+            if (theme == null)
+            {
+                return;
+            }
+
             var shapeTable = _shapeTableManager.GetShapeTable(theme.Id);
 
             context.FindPlacement = (shapeType, differentiator, displayType, displayContext) => FindPlacementImpl(shapeTable, shapeType, differentiator, displayType, context);
@@ -55,9 +62,10 @@ namespace OrchardCore.DisplayManagement
             return null;
         }
 
-        protected Task<IShape> CreateContentShapeAsync(string actualShapeType)
+        protected ValueTask<IShape> CreateContentShapeAsync(string actualShapeType)
         {
-            return _shapeFactory.CreateAsync(actualShapeType, () => Task.FromResult<IShape>(new ZoneHolding(() => _shapeFactory.CreateAsync("ContentZone", Arguments.Empty))));
+            return _shapeFactory.CreateAsync(actualShapeType, () =>
+                new ValueTask<IShape>(new ZoneHolding(() => _shapeFactory.CreateAsync("ContentZone", Arguments.Empty))));
         }
     }
 }

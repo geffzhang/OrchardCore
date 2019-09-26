@@ -1,21 +1,23 @@
 using System;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using OrchardCore.Data.Migration;
+using OrchardCore.Deployment;
 using OrchardCore.DisplayManagement.Handlers;
 using OrchardCore.Entities;
-using OrchardCore.Environment.Navigation;
 using OrchardCore.Modules;
+using OrchardCore.Navigation;
+using OrchardCore.Recipes;
 using OrchardCore.Security.Permissions;
 using OrchardCore.Workflows.Activities;
+using OrchardCore.Workflows.Deployment;
 using OrchardCore.Workflows.Drivers;
 using OrchardCore.Workflows.Evaluators;
 using OrchardCore.Workflows.Expressions;
 using OrchardCore.Workflows.Helpers;
 using OrchardCore.Workflows.Indexes;
+using OrchardCore.Workflows.Recipes;
 using OrchardCore.Workflows.Services;
 using OrchardCore.Workflows.WorkflowContextProviders;
 using YesSql.Indexes;
@@ -32,7 +34,7 @@ namespace OrchardCore.Workflows
             services.AddSingleton<IActivityIdGenerator, ActivityIdGenerator>();
 
             services.AddScoped(typeof(Resolver<>));
-            services.AddScoped<ISecurityTokenService, SecurityTokenService>();
+            services.AddSingleton<ISecurityTokenService, SecurityTokenService>();
             services.AddScoped<IActivityLibrary, ActivityLibrary>();
             services.AddScoped<IWorkflowTypeStore, WorkflowTypeStore>();
             services.AddScoped<IWorkflowStore, WorkflowStore>();
@@ -62,38 +64,49 @@ namespace OrchardCore.Workflows
             services.AddActivity<ScriptTask, ScriptTaskDisplay>();
             services.AddActivity<LogTask, LogTaskDisplay>();
 
-            services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
+            services.AddRecipeExecutionStep<WorkflowTypeStep>();
         }
 
-        public override void Configure(IApplicationBuilder app, IRouteBuilder routes, IServiceProvider serviceProvider)
+        public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
         {
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "AddActivity",
                 areaName: "OrchardCore.Workflows",
-                template: "Admin/Workflows/Types/{workflowTypeId}/Activity/{activityName}/Add",
+                pattern: "Admin/Workflows/Types/{workflowTypeId}/Activity/{activityName}/Add",
                 defaults: new { controller = "Activity", action = "Create" }
             );
 
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "EditActivity",
                 areaName: "OrchardCore.Workflows",
-                template: "Admin/Workflows/Types/{workflowTypeId}/Activity/{activityId}/Edit",
+                pattern: "Admin/Workflows/Types/{workflowTypeId}/Activity/{activityId}/Edit",
                 defaults: new { controller = "Activity", action = "Edit" }
             );
 
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "Workflows",
                 areaName: "OrchardCore.Workflows",
-                template: "Admin/Workflows/Types/{workflowTypeId}/Instances/{action}",
+                pattern: "Admin/Workflows/Types/{workflowTypeId}/Instances/{action}",
                 defaults: new { controller = "Workflow", action = "Index" }
             );
 
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "WorkflowTypes",
                 areaName: "OrchardCore.Workflows",
-                template: "Admin/Workflows/Types/{action}/{id?}",
+                pattern: "Admin/Workflows/Types/{action}/{id?}",
                 defaults: new { controller = "WorkflowType", action = "Index" }
             );
+        }
+    }
+
+    [RequireFeatures("OrchardCore.Deployment")]
+    public class DeploymentStartup : StartupBase
+    {
+        public override void ConfigureServices(IServiceCollection services)
+        {
+            services.AddTransient<IDeploymentSource, AllWorkflowTypeDeploymentSource>();
+            services.AddSingleton<IDeploymentStepFactory>(new DeploymentStepFactory<AllWorkflowTypeDeploymentStep>());
+            services.AddScoped<IDisplayDriver<DeploymentStep>, AllWorkflowTypeDeploymentStepDriver>();
         }
     }
 }

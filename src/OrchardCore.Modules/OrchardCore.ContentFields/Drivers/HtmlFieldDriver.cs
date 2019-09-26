@@ -21,18 +21,13 @@ namespace OrchardCore.ContentFields.Fields
 
         public override IDisplayResult Display(HtmlField field, BuildFieldDisplayContext context)
         {
-            return Initialize<DisplayHtmlFieldViewModel>("HtmlField", async model =>
+            return Initialize<DisplayHtmlFieldViewModel>(GetDisplayShapeType(context), async model =>
             {
                 var templateContext = new TemplateContext();
                 templateContext.SetValue("ContentItem", field.ContentItem);
                 templateContext.MemberAccessStrategy.Register<DisplayHtmlFieldViewModel>();
 
-                using (var writer = new StringWriter())
-                {
-                    await _liquidTemplatemanager.RenderAsync(field.Html, writer, NullEncoder.Default, templateContext);
-                    model.Html = writer.ToString();
-                }
-
+                model.Html = await _liquidTemplatemanager.RenderAsync(field.Html, NullEncoder.Default, templateContext);
                 model.Field = field;
                 model.Part = context.ContentPart;
                 model.PartFieldDefinition = context.PartFieldDefinition;

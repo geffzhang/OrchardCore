@@ -26,7 +26,7 @@ namespace OrchardCore.Contents.Controllers
 
         public async Task<IActionResult> Display(string contentItemId)
         {
-            var contentItem = await _contentManager.GetAsync(contentItemId, VersionOptions.Published);
+            var contentItem = await _contentManager.GetAsync(contentItemId);
 
             if (contentItem == null)
             {
@@ -35,7 +35,7 @@ namespace OrchardCore.Contents.Controllers
 
             if (!await _authorizationService.AuthorizeAsync(User, Permissions.ViewContent, contentItem))
             {
-                return Unauthorized();
+                return User.Identity.IsAuthenticated ? (IActionResult)Forbid() : Challenge();
             }
 
             var model = await _contentItemDisplayManager.BuildDisplayAsync(contentItem, this);
@@ -61,7 +61,7 @@ namespace OrchardCore.Contents.Controllers
 
             if (!await _authorizationService.AuthorizeAsync(User, Permissions.PreviewContent, contentItem))
             {
-                return Unauthorized();
+                return User.Identity.IsAuthenticated ? (IActionResult)Forbid() : Challenge();
             }
 
             var model = await _contentItemDisplayManager.BuildDisplayAsync(contentItem, this);

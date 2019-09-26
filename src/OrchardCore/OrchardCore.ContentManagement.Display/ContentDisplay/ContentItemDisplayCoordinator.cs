@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using OrchardCore.Modules;
 using Microsoft.Extensions.Logging;
 using OrchardCore.ContentManagement.Display.ContentDisplay;
 using OrchardCore.ContentManagement.Metadata;
+using OrchardCore.ContentManagement.Metadata.Settings;
 using OrchardCore.DisplayManagement;
-using OrchardCore.DisplayManagement.Descriptors;
 using OrchardCore.DisplayManagement.Handlers;
+using OrchardCore.DisplayManagement.Views;
+using OrchardCore.DisplayManagement.Zones;
+using OrchardCore.Modules;
 
 namespace OrchardCore.ContentManagement.Display
 {
@@ -44,7 +46,7 @@ namespace OrchardCore.ContentManagement.Display
         {
             var contentTypeDefinition = _contentDefinitionManager.GetTypeDefinition(contentItem.ContentType);
 
-            if(contentTypeDefinition == null)
+            if (contentTypeDefinition == null)
             {
                 return;
             }
@@ -69,6 +71,7 @@ namespace OrchardCore.ContentManagement.Display
             {
                 var partName = contentTypePartDefinition.Name;
                 var partTypeName = contentTypePartDefinition.PartDefinition.Name;
+                var contentType = contentTypePartDefinition.ContentTypeDefinition.Name;
                 var partActivator = _contentPartFactory.GetTypeActivator(partTypeName);
                 var part = contentItem.Get(partActivator.Type, partName) as ContentPart;
 
@@ -90,6 +93,49 @@ namespace OrchardCore.ContentManagement.Display
                         }
                     }
 
+                    var tempContext = context;
+
+                    // Create a custom ContentPart shape that will hold the fields for dynamic content part (not implicit parts)
+                    // This allows its fields to be grouped and templated
+
+                    if (part.GetType() == typeof(ContentPart) && partTypeName != contentTypePartDefinition.ContentTypeDefinition.Name)
+                    {
+                        var shapeType = context.DisplayType != "Detail" ? "ContentPart_" + context.DisplayType : "ContentPart";
+
+                        var shapeResult = new ShapeResult(shapeType, ctx => ctx.ShapeFactory.CreateAsync(shapeType, () => new ValueTask<IShape>(new ZoneHolding(() => ctx.ShapeFactory.CreateAsync("Zone", Arguments.Empty)))));
+                        shapeResult.Differentiator(partName);
+                        shapeResult.Location("Content");
+
+                        await shapeResult.ApplyAsync(context);
+
+                        var contentPartShape = shapeResult.Shape;
+
+                        // Make the ContentPart name property available on the shape
+                        dynamic dynamicContentPartShape = contentPartShape;
+                        dynamicContentPartShape[partTypeName] = part.Content;
+                        dynamicContentPartShape["ContentItem"] = part.ContentItem;
+
+                        contentPartShape.Metadata.Alternates.Add(partTypeName);
+                        contentPartShape.Metadata.Alternates.Add($"{contentType}__{partTypeName}");
+
+                        if (context.DisplayType != "Detail")
+                        {
+                            contentPartShape.Metadata.Alternates.Add($"{partTypeName}_{context.DisplayType}");
+                            contentPartShape.Metadata.Alternates.Add($"{contentType}_{context.DisplayType}__{partTypeName}");
+                        }
+
+                        if (partName != partTypeName)
+                        {
+                            contentPartShape.Metadata.Alternates.Add($"{contentType}__{partName}");
+
+                            if (context.DisplayType != "Detail")
+                            {
+                                contentPartShape.Metadata.Alternates.Add($"{contentType}_{context.DisplayType}__{partName}");
+                            }
+                        }
+
+                        context = new BuildDisplayContext(shapeResult.Shape, context.DisplayType, context.GroupId, context.ShapeFactory, context.Layout, context.Updater);
+                    }
 
                     foreach (var contentPartFieldDefinition in contentTypePartDefinition.PartDefinition.Fields)
                     {
@@ -109,6 +155,8 @@ namespace OrchardCore.ContentManagement.Display
                             }
                         }
                     }
+
+                    context = tempContext;
                 }
             }
         }
@@ -120,7 +168,12 @@ namespace OrchardCore.ContentManagement.Display
                 return;
 
             dynamic contentShape = context.Shape;
-            dynamic partsShape = await context.ShapeFactory.CreateAsync("Zone", Arguments.Empty);
+            dynamic partsShape = await context.ShapeFactory.CreateAsync("ContentZone",
+                Arguments.From(new
+                {
+                    ContentItem = contentItem
+                }));
+
             contentShape.Zones["Parts"] = partsShape;
 
             foreach (var displayDriver in _displayDrivers)
@@ -151,12 +204,13 @@ namespace OrchardCore.ContentManagement.Display
                 typePartShape.ContentPart = part;
                 typePartShape.ContentTypePartDefinition = typePartDefinition;
 
-                var partPosition = typePartDefinition.Settings["Position"]?.ToString() ?? "before";
+                var partPosition = typePartDefinition.GetSettings<ContentTypePartSettings>().Position ?? "before";
 
                 partsShape.Add(typePartShape, partPosition);
                 partsShape[typePartDefinition.Name] = typePartShape;
 
-                context.FindPlacement = (shapeType, differentiator, displayType, displayContext) => new PlacementInfo { Location = $"Parts.{typePartDefinition.Name}" };
+                context.DefaultZone = $"Parts.{typePartDefinition.Name}";
+                context.DefaultPosition = partPosition;
 
                 await _partDisplayDrivers.InvokeAsync(async contentDisplay =>
                 {
@@ -170,9 +224,9 @@ namespace OrchardCore.ContentManagement.Display
                 foreach (var partFieldDefinition in typePartDefinition.PartDefinition.Fields)
                 {
                     var fieldName = partFieldDefinition.Name;
+                    var fieldPosition = partFieldDefinition.GetSettings<ContentPartFieldSettings>().Position ?? "before";
 
-                    var fieldPosition = partFieldDefinition.Settings["Position"]?.ToString() ?? "before";
-                    context.FindPlacement = (shapeType, differentiator, displayType, displayContext) => new PlacementInfo { Location = $"Parts.{typePartDefinition.Name}:{fieldPosition}" };
+                    context.DefaultZone = $"Parts.{typePartDefinition.Name}:{fieldPosition}";
 
                     await _fieldDisplayDrivers.InvokeAsync(async contentDisplay =>
                     {
@@ -193,7 +247,12 @@ namespace OrchardCore.ContentManagement.Display
                 return;
 
             dynamic contentShape = context.Shape;
-            dynamic partsShape = await context.ShapeFactory.CreateAsync("Zone", Arguments.Empty);
+            dynamic partsShape = await context.ShapeFactory.CreateAsync("ContentZone",
+                Arguments.From(new
+                {
+                    ContentItem = contentItem
+                }));
+
             contentShape.Zones["Parts"] = partsShape;
 
             foreach (var displayDriver in _displayDrivers)
@@ -223,13 +282,12 @@ namespace OrchardCore.ContentManagement.Display
                 dynamic typePartShape = await context.ShapeFactory.CreateAsync("ContentPart_Edit", Arguments.Empty);
                 typePartShape.ContentPart = part;
                 typePartShape.ContentTypePartDefinition = typePartDefinition;
-
-                var partPosition = typePartDefinition.Settings["Position"]?.ToString() ?? "before";
+                var partPosition = typePartDefinition.GetSettings<ContentPartFieldSettings>().Position ?? "before";
 
                 partsShape.Add(typePartShape, partPosition);
                 partsShape[typePartDefinition.Name] = typePartShape;
-                
-                context.FindPlacement = (shapeType, differentiator, displayType, displayContext) => new PlacementInfo { Location = $"Parts.{typePartDefinition.Name}" };
+
+                context.DefaultZone = $"Parts.{typePartDefinition.Name}:{partPosition}";
 
                 await _partDisplayDrivers.InvokeAsync(async contentDisplay =>
                 {
@@ -243,9 +301,9 @@ namespace OrchardCore.ContentManagement.Display
                 foreach (var partFieldDefinition in typePartDefinition.PartDefinition.Fields)
                 {
                     var fieldName = partFieldDefinition.Name;
+                    var fieldPosition = partFieldDefinition.GetSettings<ContentPartFieldSettings>().Position ?? "before";
 
-                    var fieldPosition = partFieldDefinition.Settings["Position"]?.ToString() ?? "before";
-                    context.FindPlacement = (shapeType, differentiator, displayType, displayContext) => new PlacementInfo { Location = $"Parts.{typePartDefinition.Name}:{fieldPosition}" };
+                    context.DefaultZone = $"Parts.{typePartDefinition.Name}:{fieldPosition}";
 
                     await _fieldDisplayDrivers.InvokeAsync(async contentDisplay =>
                     {

@@ -22,18 +22,14 @@ namespace OrchardCore.Markdown.Drivers
 
         public override IDisplayResult Display(MarkdownField field, BuildFieldDisplayContext context)
         {
-            return Initialize<MarkdownFieldViewModel>("MarkdownField", async model =>
+            return Initialize<MarkdownFieldViewModel>(GetDisplayShapeType(context), async model =>
             {
                 var templateContext = new TemplateContext();
                 templateContext.SetValue("ContentItem", field.ContentItem);
                 templateContext.MemberAccessStrategy.Register<MarkdownFieldViewModel>();
 
-                using (var writer = new StringWriter())
-                {
-                    await _liquidTemplatemanager.RenderAsync(field.Markdown, writer, NullEncoder.Default, templateContext);
-                    model.Markdown = writer.ToString();
-                    model.Html = Markdig.Markdown.ToHtml(model.Markdown ?? "");
-                }
+                model.Markdown = await _liquidTemplatemanager.RenderAsync(field.Markdown,  System.Text.Encodings.Web.HtmlEncoder.Default, templateContext);
+                model.Html = Markdig.Markdown.ToHtml(model.Markdown ?? "");
 
                 model.Field = field;
                 model.Part = context.ContentPart;

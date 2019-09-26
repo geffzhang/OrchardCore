@@ -23,20 +23,12 @@ namespace OrchardCore.Workflows.Activities
         private IStringLocalizer T { get; }
 
         public override string Name => nameof(ScriptTask);
+        public override LocalizedString DisplayText => T["Script Task"];
         public override LocalizedString Category => T["Control Flow"];
 
         public IList<string> AvailableOutcomes
         {
             get => GetProperty(() => new List<string> { "Done" });
-            set => SetProperty(value);
-        }
-
-        /// <summary>
-        /// A title describing the work done by the script.
-        /// </summary>
-        public string Title
-        {
-            get => GetProperty<String>();
             set => SetProperty(value);
         }
 

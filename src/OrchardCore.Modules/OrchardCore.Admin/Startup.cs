@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.Filters;
 using OrchardCore.Modules;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.DisplayManagement.Theming;
-using OrchardCore.Environment.Navigation;
+using OrchardCore.Navigation;
 using OrchardCore.Security.Permissions;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,12 +29,12 @@ namespace OrchardCore.Admin
             services.AddScoped<IAdminThemeService, AdminThemeService>();
         }
 
-        public override void Configure(IApplicationBuilder builder, IRouteBuilder routes, IServiceProvider serviceProvider)
+        public override void Configure(IApplicationBuilder builder, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
         {
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "Admin",
                 areaName: "OrchardCore.Admin",
-                template: "admin",
+                pattern: "admin",
                 defaults: new { controller = "Admin", action = "Index" }
             );
         }

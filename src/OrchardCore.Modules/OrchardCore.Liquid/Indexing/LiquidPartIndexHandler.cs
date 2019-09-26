@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 using OrchardCore.Indexing;
-using OrchardCore.Liquid.Model;
+using OrchardCore.Liquid.Models;
 
 namespace OrchardCore.Liquid.Indexing
 {
@@ -13,7 +13,10 @@ namespace OrchardCore.Liquid.Indexing
                 | DocumentIndexOptions.Analyze
                 ;
 
-            context.DocumentIndex.Entries.Add(context.Key, new DocumentIndex.DocumentIndexEntry(part.Liquid, DocumentIndex.Types.Text, options));
+            foreach (var key in context.Keys)
+            {
+                context.DocumentIndex.Set(key, part.Liquid, options);
+            }
 
             return Task.CompletedTask;
         }

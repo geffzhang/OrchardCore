@@ -1,14 +1,15 @@
 using System;
-using System.Linq;
-using Microsoft.AspNetCore.Http;
+using System.IO;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.Mvc.Razor.Compilation;
-using Microsoft.AspNetCore.Mvc.Razor.TagHelpers;
-using Microsoft.AspNetCore.Mvc.TagHelpers;
-using Microsoft.AspNetCore.Mvc.ViewFeatures.Internal;
-using Microsoft.CodeAnalysis;
+using Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -16,12 +17,14 @@ using OrchardCore.Modules;
 using OrchardCore.Mvc.LocationExpander;
 using OrchardCore.Mvc.ModelBinding;
 using OrchardCore.Mvc.RazorPages;
+using OrchardCore.Routing;
 
 namespace OrchardCore.Mvc
 {
     public class Startup : StartupBase
     {
-        public override int Order => -200;
+        public override int Order => -1000;
+        public override int ConfigureOrder => 1000;
 
         private readonly IServiceProvider _serviceProvider;
 
@@ -30,72 +33,86 @@ namespace OrchardCore.Mvc
             _serviceProvider = serviceProvider;
         }
 
+        public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
+        {
+            // The default route is added to each tenant as a template route.
+            routes.MapControllerRoute("Default", "{area:exists}/{controller}/{action}/{id?}");
+            routes.MapRazorPages();
+        }
+
         public override void ConfigureServices(IServiceCollection services)
         {
+            // Register an isolated tenant part manager.
             services.AddSingleton(new ApplicationPartManager());
 
-            var builder = services.AddMvcCore(options =>
+            var builder = services.AddMvc(options =>
             {
-                // Do we need this?
-                options.Filters.Add(typeof(AutoValidateAntiforgeryTokenAuthorizationFilter));
+                // Forcing AntiForgery Token Validation on by default, it's only in Razor Pages by default
+                // Load this filter after the MediaSizeFilterLimitAttribute, but before the
+                // IgnoreAntiforgeryTokenAttribute. refer : https://github.com/aspnet/AspNetCore/issues/10384
+                options.Filters.Add(typeof(AutoValidateAntiforgeryTokenAttribute), 999);
+
+                // Custom model binder to testing purpose
                 options.ModelBinderProviders.Insert(0, new CheckMarkModelBinderProvider());
             });
 
-            builder.AddAuthorization();
-            // builder.AddViews();
-            // builder.AddRazorViewEngine();
-            // the above is called here
-            builder.AddViewLocalization();
-            builder.AddDataAnnotationsLocalization();
+            // Add a route endpoint selector policy.
+            services.AddSingleton<MatcherPolicy, FormValueRequiredMatcherPolicy>();
+
+            // There are some issues when using the default formatters based on
+            // System.Text.Json. Here, we manually add JSON.NET based formatters.
+            builder.AddNewtonsoftJson();
+
+            builder.SetCompatibilityVersion(CompatibilityVersion.Latest);
+
+            services.AddModularRazorPages();
 
             AddModularFrameworkParts(_serviceProvider, builder.PartManager);
 
-            builder.Services.TryAddEnumerable(
+            // Adding localization
+            builder.AddViewLocalization();
+            builder.AddDataAnnotationsLocalization();
+
+            services.TryAddEnumerable(
                 ServiceDescriptor.Transient<IConfigureOptions<RazorViewEngineOptions>, ModularRazorViewEngineOptionsSetup>());
 
-            builder.AddModularRazorPages();
+            // Support razor runtime compilation only if the 'refs' folder exists.
+            var refsFolderExists = Directory.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "refs"));
 
-            // Use a custom IViewCompilerProvider so that all tenants reuse the same ICompilerCache instance
-            builder.Services.Replace(new ServiceDescriptor(typeof(IViewCompilerProvider), typeof(SharedViewCompilerProvider), ServiceLifetime.Singleton));
+            if (refsFolderExists)
+            {
+                builder.AddRazorRuntimeCompilation();
+
+                // Shares across tenants the same compiler and its 'IMemoryCache' instance.
+                services.AddSingleton<IViewCompilerProvider, SharedViewCompilerProvider>();
+            }
+
+            services.TryAddEnumerable(
+                ServiceDescriptor.Transient<IConfigureOptions<MvcRazorRuntimeCompilationOptions>, RazorCompilationOptionsSetup>());
+
+            services.AddSingleton<RazorCompilationFileProviderAccessor>();
+
+            services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
+
+            // Use a custom 'IFileVersionProvider' that also lookup all tenant level 'IStaticFileProvider'.
+            services.Replace(ServiceDescriptor.Singleton<IFileVersionProvider, ShellFileVersionProvider>());
 
             AddMvcModuleCoreServices(services);
-            AddDefaultFrameworkParts(builder.PartManager);
-
-            // Order important
-            builder.AddJsonFormatters();
         }
 
-        private void AddModularFrameworkParts(IServiceProvider services, ApplicationPartManager manager)
+        internal static void AddModularFrameworkParts(IServiceProvider services, ApplicationPartManager manager)
         {
-            var httpContextAccessor = services.GetRequiredService<IHttpContextAccessor>();
-            manager.ApplicationParts.Add(new ShellFeatureApplicationPart(httpContextAccessor));
-        }
-        
-        private static void AddDefaultFrameworkParts(ApplicationPartManager partManager)
-        {
-            var mvcTagHelpersAssembly = typeof(InputTagHelper).Assembly;
-            if (!partManager.ApplicationParts.OfType<AssemblyPart>().Any(p => p.Assembly == mvcTagHelpersAssembly))
-            {
-                partManager.ApplicationParts.Add(new AssemblyPart(mvcTagHelpersAssembly));
-            }
-
-            var mvcRazorAssembly = typeof(UrlResolutionTagHelper).Assembly;
-            if (!partManager.ApplicationParts.OfType<AssemblyPart>().Any(p => p.Assembly == mvcRazorAssembly))
-            {
-                partManager.ApplicationParts.Add(new AssemblyPart(mvcRazorAssembly));
-            }
+            manager.ApplicationParts.Insert(0, new ShellFeatureApplicationPart());
+            manager.FeatureProviders.Add(new ShellViewFeatureProvider(services));
         }
 
         internal static void AddMvcModuleCoreServices(IServiceCollection services)
         {
-            services.Replace(
-                ServiceDescriptor.Transient<IModularTenantRouteBuilder, ModularTenantRouteBuilder>());
-
-            services.AddScoped<IViewLocationExpanderProvider, DefaultViewLocationExpanderProvider>();
-            services.AddScoped<IViewLocationExpanderProvider, ModularViewLocationExpanderProvider>();
+            services.AddScoped<IViewLocationExpanderProvider, ComponentViewLocationExpanderProvider>();
+            services.AddScoped<IViewLocationExpanderProvider, SharedViewLocationExpanderProvider>();
 
             services.TryAddEnumerable(
-                ServiceDescriptor.Transient<IApplicationModelProvider, ModularApplicationModelProvider>());
+                ServiceDescriptor.Singleton<IApplicationModelProvider, ModularApplicationModelProvider>());
         }
     }
 }

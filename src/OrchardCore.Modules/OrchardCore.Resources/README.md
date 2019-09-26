@@ -1,10 +1,29 @@
-# Resources (OrchardCore.Resources)
+# Resources (`OrchardCore.Resources`)
 
 ## Purpose
 
-The Resources module provides commonly used resources like JavaScript libraries and CSS files. It also enables the Resource Manager
+The `Resources` module provides commonly used resources like JavaScript libraries and CSS files. It also enables the Resource Manager
 so any module can describe what resources are necessary on any page or component. When the full page is rendered all the required
 resources are computed and custom `<script>` and `<link>` tags are rendered accordingly. You can also register custom `<meta>` tags.
+
+
+## Resource Settings
+
+Resource Settings are configured through the site admin.
+
+#### UseCdn
+
+Enabling UseCdn will configure the `IResourceManager` to provide any scripts or styles, such as jQuery, from the configured CDN.
+
+#### ResourceDebugMode
+
+When enabled will serve scripts or styles, that have a CDN configured, or a debug-src, from the local server in non minified format.
+This will also disabled the CdnBaseUrl prepending.
+
+#### CdnBaseUrl
+
+When supplied this will prepend local resources served via the `IResourceManager` or Tag Helpers with the absolute url provided. This will
+be disabled in `ResourceDebugMode` 
 
 ## Named Resources
 
@@ -13,14 +32,18 @@ and optionally a version. The `OrchardCore.Resources` modules provides some comm
 
 | Name | Type | Versions | Dependencies |
 | ---- | ---- | -------- | ------------ |
-| jQuery | Script | 1.12.4 | - |
-| jQuery | Script | 2.2.4 | - |
 | jQuery | Script | 3.3.1 | - |
-| Popper | Script | 1.14.3 | - |
-| Bootstrap | Script | 3.3.7, 4.1.3 | jQuery, Popper |
-| Bootstrap | Style | 3.3.7, 4.1.3 | - |
+| jQuery.slim | Script | 3.3.1 | - |
 | jQuery-ui | Script | 1.12.1 | jQuery |
-| font-awesome | Style | 4.7.0, 5.2.0 | - |
+| jQuery-ui-i18n | Script | 1.7.2 | jQuery-ui |
+| popper | Script | 1.15.0 | - |
+| bootstrap | Script | 3.4.0, 4.3.1 | jQuery, Popper |
+| bootstrap | Style | 3.4.0, 4.3.1 | - |
+| codemirror | Script | 5.4.2 | - |
+| codemirror | Style | 5.4.2 | - |
+| font-awesome | Style | 4.7.0, 5.7.2 | - |
+| font-awesome | Script | 5.7.2 | - |
+| font-awesome-v4-shims | Script | 5.7.2 | - |
 
 ## Usage
 
@@ -59,6 +82,15 @@ settings.UseVersion("3.3");
 ```
 
 This will use the latest available version between `3.3` and `3.4`. If the version is not available an exception is thrown.
+
+##### Append a version
+
+```csharp
+settings.UseAppendVersion(true);
+```
+
+This will append a version string that is calculated at runtime as an SHA256 hash of the file, the calculation cached, and 
+appended to the url as part of the query string, e.g. `my-script.js?v=eER9OO6zWGKaIq1RlNjImsrWN9y2oTgQKg2TrJnDUWk` 
 
 #### Register custom script
 
@@ -122,7 +154,7 @@ You can force a resource to be used from its CDN. By default the behavior is def
 
 ##### Use specific version
 
-This example will use the latest available version with a Major version of `3`, like `3.3.7`. If the version is not specified
+This example will use the latest available version with a Major version of `3`, like `3.4.0`. If the version is not specified
 the latest one is always used.
 
 ```liquid
@@ -131,6 +163,18 @@ the latest one is always used.
 
 ```razor
 <script asp-name="bootstrap" version="3"></script>
+```
+
+##### Append a Version Hash
+
+You can append a version hash that will be calculated, and calculation cached, and appended in the format ?v=eER9OO6zWGKaIq1RlNjImsrWN9y2oTgQKg2TrJnDUWk
+
+```liquid
+{% script name:"bootstrap", append_version:"true" %}
+```
+
+```razor
+<script asp-name="bootstrap" asp-append-version="true"></script>
 ```
 
 ##### Specify location
@@ -152,11 +196,11 @@ Styles, however, are always injected in the header section of the HTML document.
 You can declare a new resource directly from a view, and it will be injected only once even if the view is called multiple time.
 
 ```liquid
-{% script source:"/TheTheme/js/foo.min.js", debug_src:"/TheTheme/js/foo.js" %}
+{% script src:"/TheTheme/js/foo.min.js", debug_src:"/TheTheme/js/foo.js" %}
 ```
 
 ```razor
-<script asp-name="foo" asp-src="/TheTheme/js/foo.min.js?v=1.0" debug-src="/TheTheme/js/foo.js?v=1.0" depends-on="baz:1.0" version="1.0"></script>
+<script asp-name="foo" asp-src="~/TheTheme/js/foo.min.js?v=1.0" debug-src="~/TheTheme/js/foo.js?v=1.0" depends-on="baz:1.0" version="1.0"></script>
 ```
 
 In this example we also define a dependency on the script named `baz` with the version `1.0`. If the version was not set
@@ -165,19 +209,45 @@ the one with the highest number will be used.
 You can also do the same for a stylesheet:
 
 ```liquid
-{% style source:"/TheTheme/css/bar.min.css", debug_src:"/TheTheme/css/bar.css" %}
+{% style src:"/TheTheme/css/bar.min.css", debug_src:"/TheTheme/css/bar.css" %}
 ```
 
 ```razor
-<style asp-src="/TheTheme/css/bar.min.css" debug-src="/TheTheme/css/bar.css"></style>
+<style asp-src="~/TheTheme/css/bar.min.css" debug-src="~/TheTheme/css/bar.css"></style>
 ```
 
 #### Custom scripts
 
 The following example demonstrates how to inject a custom script in the footer section.
 
+```liquid
+{% scriptblock at: "Foot" %}
+    document.write('<!-- some script -->');
+{% endscriptblock %}
+```
+
 ```razor
 <script at="Foot">
     document.write('<!-- some script -->');
 </script>
 ```
+
+#### Meta tags
+
+```liquid
+{% meta name:"description", content:"This is a website" %}
+```
+
+```razor
+<meta asp-name="description" content="This is a website" />
+```
+
+These properties are available:
+
+| Name | Description |
+| ---- | ---- | 
+| `name` (`asp-name` in Razor)| The `name` attribute of the tag |
+| `content` | The `content` attribute of the tag |
+| `httpequiv` | The `http-equiv` attribute of the tag |
+| `charset` | The `charset` attribute of the tag |
+| `separator` | The separator to use when multiple tags are defined for the same name |

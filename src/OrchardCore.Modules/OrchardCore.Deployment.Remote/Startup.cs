@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using OrchardCore.Deployment.Remote;
 using OrchardCore.Deployment.Remote.Services;
-using OrchardCore.Environment.Navigation;
+using OrchardCore.Navigation;
 
 namespace OrchardCore.Deployment
 {
@@ -19,12 +19,12 @@ namespace OrchardCore.Deployment
             services.AddScoped<IDeploymentTargetProvider, RemoteInstanceDeploymentTargetProvider>();
         }
 
-        public override void Configure(IApplicationBuilder app, IRouteBuilder routes, IServiceProvider serviceProvider)
+        public override void Configure(IApplicationBuilder app, IEndpointRouteBuilder routes, IServiceProvider serviceProvider)
         {
-            routes.MapAreaRoute(
+            routes.MapAreaControllerRoute(
                 name: "DeploymentImport",
                 areaName: "OrchardCore.Deployment.Remote",
-                template: "Deployment/Import",
+                pattern: "Deployment/Import",
                 defaults: new { controller = "ImportRemoteInstance", action = "Import" }
             );
         }

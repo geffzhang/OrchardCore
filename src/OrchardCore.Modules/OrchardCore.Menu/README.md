@@ -1,4 +1,4 @@
-# Menu (OrchardCore.Menu)
+# Menu (`OrchardCore.Menu`)
 
 ## Shapes
 
@@ -10,7 +10,7 @@ The `Menu` shape is used to render a Menu.
 | --------- | ------------ |
 | `Model.ContentItemId` | If defined, contains the content item identifier of the menu to render. |
 | `Model.Items` | The list of menu items shapes for the menu. These are shapes of type `MenuItem`. |
-| `Model.Differentiator` | If defined, contains the formatted name of the menu. For instance `MainMenu`. |
+| `Model.Differentiator` | If defined, contains the formatted name of the menu (title). For instance `MainMenu`. |
 
 #### Menu Alternates
 
@@ -132,7 +132,7 @@ available on the `MenuItem` shape are still available.
 | `Model.Items` | The list of sub menu items shapes. These are shapes of type `MenuItem`. |
 | `Model.Differentiator` | If defined, contains the formatted name of the menu. For instance `MainMenu`. |
 
-#### MenuItemLink Alternates
+#### `MenuItemLink` Alternates
 
 | Definition | Template | Filename|
 | ---------- | --------- | ------------ |
@@ -144,7 +144,7 @@ available on the `MenuItem` shape are still available.
 | `MenuItemLink__[MenuName]__[ContentType]` | `MenuItemLink__MainMenu__HtmlMenuItem` | `MenuItemLink-MainMenu-HtmlMenuItem.cshtml` |
 | `MenuItemLink__[MenuName]__[ContentType]__level__[level]` | `MenuItemLink__MainMenu__HtmlMenuItem__level__2` | `MenuItemLink-MainMenu-HtmlMenuItem-level-2.cshtml` |
 
-#### MenuItemLink Example
+#### `MenuItemLink` Example
 
 ```liquid
 {% assign link = Model.ContentItem.Content.LinkMenuItemPart %}

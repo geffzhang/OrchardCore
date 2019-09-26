@@ -5,9 +5,11 @@ using OrchardCore.ContentManagement.Display.ContentDisplay;
 using OrchardCore.ContentTypes.Editors;
 using OrchardCore.Data.Migration;
 using OrchardCore.Flows.Drivers;
+using OrchardCore.Flows.Indexing;
 using OrchardCore.Flows.Models;
 using OrchardCore.Flows.Settings;
 using OrchardCore.Flows.ViewModels;
+using OrchardCore.Indexing;
 using OrchardCore.Modules;
 
 namespace OrchardCore.Flows
@@ -26,15 +28,17 @@ namespace OrchardCore.Flows
         {
             // Flow Part
             services.AddScoped<IContentPartDisplayDriver, FlowPartDisplay>();
-            services.AddSingleton<ContentPart, FlowPart>();
+            services.AddContentPart<FlowPart>();
             services.AddScoped<IContentDisplayDriver, FlowMetadataDisplay>();
 
             // Bag Part
             services.AddScoped<IContentPartDisplayDriver, BagPartDisplay>();
-            services.AddSingleton<ContentPart, BagPart>();
+            services.AddContentPart<BagPart>();
             services.AddScoped<IContentTypePartDefinitionDisplayDriver, BagPartSettingsDisplayDriver>();
+            services.AddScoped<IContentPartIndexHandler, BagPartIndexHandler>();
 
-            services.AddSingleton<ContentPart, FlowMetadata>();
+            services.AddContentPart<FlowMetadata>();
+
             services.AddScoped<IDataMigration, Migrations>();
         }
     }

@@ -27,8 +27,16 @@ A placement rule contains two sets of data:
 Currently you can filter shapes by:
 
 - Their original type, which is the property name of the placement rule, like `TextField`.
-- `display-type` (Optional): The display type, like `Summary` and `Detail` for the most common ones.
+- `displayType` (Optional): The display type, like `Summary` and `Detail` for the most common ones.
 - `differentiator` (Optional): The differentiator which is used to distinguish shape types that are reused for multiple elements, like field names.
+
+Additional custom filter providers can be added by implementing `IPlacementNodeFilterProvider`. 
+
+For shapes that are built from a content item, you can filter by the following built in filter providers:
+
+- `contentType` (Optional): A single ContentType or an array of ContentTypes that content item from which the shape was built should match.
+- `contentPart` (Optional): A single ContentPart or an of array of ContentParts that content item from which the shape was built should contain.
+- `path` (Optional): A single path or an of array of paths that should match the request path.
 
 Placement information consists of:
 
@@ -41,8 +49,11 @@ Placement information consists of:
 {
   "TextField": [
     {
-		"display-type": "Detail",
+		"displayType": "Detail",
 		"differentiator": "Article-MyTextField",
+        "contentType": ["Page", "BlogPost"],
+        "contentPart": ["HtmlBodyPart"],
+        "path": ["/mypage"],
 
 		"place": "Content",
 		"alternates": [ "TextField_Title" ],
@@ -55,7 +66,7 @@ Placement information consists of:
 
 ### Placing Fields
 
-Fields have a custom differentiator as their shape is used in many places. It is built using the Part it's contained
+Fields have a custom differentiator as their shape is used in many places. It is built using the `Part` it's contained
 in, and the name of the field. For instance, if a field named `MyField` would be added to an `Article` content type,
 its differentiator would be `Article.MyField`. If a field named `City` was added to an `Address` part then its differentiator would
 be `Address.City`.
@@ -66,7 +77,43 @@ be `Address.City`.
 
 Everything you need to know about Shapes is in [this video](https://youtu.be/gKLjtCIs4GU).
 
-### Tag Helpers
+### Rendering a shape
+
+You can use the `<shape>` tag helper to render any shape, even pass properties.
+
+```razor
+@{
+    var intValue = 1;
+    var stringValue = "a";
+}
+
+@await DisplayAsync(await New.MyShape(Foo: 1, Bar: "a"))
+
+<shape type="MyShape" foo="1" bar="a" />
+
+<shape type="MyShape" prop-foo="1" bar="a" />
+
+<shape type="MyShape" prop-foo="@intValue" prop-bar="@stringValue" />
+```
+
+```liquid
+{% assign customShape = "MyShape" | shape_new %}
+{% shape_add_properties customShape my_string: "String Test 3", my_int: 1 %}
+{{ customShape | shape_render }}
+
+{% "MyShape" | shape_new | shape_properties: my_int: 3, my_string: "String Test 3" | shape_render %}
+```
+
+For rendering content items, you could also use the following tag helper.
+Note: you need to add `@addTagHelper *, OrchardCore.Contents` to your `_ViewImports.cshtml` file to load this tag helper.
+
+```razor
+<contentitem alias="alias:main-menu" display-type="Detail" />
+```
+
+```liquid
+{% contentitem alias:"alias:main-menu" display_type="Detail" %}
+```
 
 #### Manipulating shape metadata
 
@@ -95,9 +142,9 @@ Metadata tag helper example:
 
 ### Date Time shapes
 
-#### DateTime
+#### `DateTime`
 
-Renders a Date and Time value using the time zone of the request.
+Renders a `Date` and `Time` value using the timezone of the request.
 
 | Parameter | Type | Description |
 | --------- | ---- |------------ |
@@ -110,9 +157,9 @@ Tag helper example:
 <datetime utc="@contentItem.CreatedUtc" />
 ```
 
-#### TimeSpan
+#### `TimeSpan`
 
-Renders a relative textual representation of a Date and Time interval.
+Renders a relative textual representation of a `Date` and `Time` interval.
 
 | Parameter | Type | Description |
 | --------- | ---- |------------ |
@@ -133,4 +180,4 @@ Result:
 
 ## Shape differentiators
 
-You can find information about shape differenciators in the [Templates documentation](../../OrchardCore.Modules/OrchardCore.Templates/README/#content-field-differentiator)
+You can find information about shape differenciators in the [Templates documentation](../../OrchardCore.Modules/OrchardCore.Templates/#content-field-differentiator)
